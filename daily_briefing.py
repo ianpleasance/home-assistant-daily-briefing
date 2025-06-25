@@ -59,6 +59,13 @@ ENABLE_RANDOM_JOKE = os.getenv('ENABLE_RANDOM_JOKE', 'False').lower() == 'true'
 # Environment variable: ENABLE_ONTHISDAY (expects 'True' or 'False')
 ENABLE_ONTHISDAY = os.getenv('ENABLE_ONTHISDAY', 'False').lower() == 'true'
 
+# Custom Location via Environment Variables
+# If all three of these environment variables are set, they will override command-line location.
+# Environment variables: LOCATION_NAME, LOCATION_LATITUDE, LOCATION_LONGITUDE
+CUSTOM_LOCATION_NAME = os.getenv('LOCATION_NAME')
+CUSTOM_LOCATION_LATITUDE = os.getenv('LOCATION_LATITUDE')
+CUSTOM_LOCATION_LONGITUDE = os.getenv('LOCATION_LONGITUDE')
+
 
 # RSS feed URLs (direct RSS feed URLs)
 RSS_FEEDS = [
@@ -74,7 +81,11 @@ RSS_FEEDS = [
 # Coordinates for locations (Latitude, Longitude)
 LOCATIONS = {
     'halstead': {'lat': 51.9451, 'lon': 0.6411, 'name': 'Halstead, Essex'},
-    'braintree': {'lat': 51.878, 'lon': 0.550, 'name': 'Braintree, Essex'}
+    'braintree': {'lat': 51.878, 'lon': 0.550, 'name': 'Braintree, Essex'},
+    'london': {'lat': 51.5074, 'lon': -0.1278, 'name': 'London'},
+    'birmingham': {'lat': 52.4862, 'lon': -1.8904, 'name': 'Birmingham'},
+    'manchester': {'lat': 53.4808, 'lon': -2.2426, 'name': 'Manchester'},
+    'liverpool': {'lat': 53.4084, 'lon': -2.9916, 'name': 'Liverpool'}
 }
 
 # --- Functions ---
@@ -469,14 +480,32 @@ def format_briefing(weather_data, news_items, random_fact, random_joke, onthisda
 
 # --- Main Execution ---
 if __name__ == "__main__":
-    # Get location from first command line argument, default to 'halstead'
-    selected_location_key = sys.argv[1].lower() if len(sys.argv) > 1 else 'halstead'
-    
-    if selected_location_key not in LOCATIONS:
-        print(f"Error: Invalid location specified. Choose from {list(LOCATIONS.keys())}", file=sys.stderr)
-        sys.exit(1)
+    selected_location = {} # Initialize selected_location dictionary
 
-    selected_location = LOCATIONS[selected_location_key]
+    # Check for custom location environment variables first
+    if CUSTOM_LOCATION_NAME and CUSTOM_LOCATION_LATITUDE and CUSTOM_LOCATION_LONGITUDE:
+        try:
+            selected_location['name'] = CUSTOM_LOCATION_NAME
+            selected_location['lat'] = float(CUSTOM_LOCATION_LATITUDE)
+            selected_location['lon'] = float(CUSTOM_LOCATION_LONGITUDE)
+            if DEBUG:
+                print(f"DEBUG: Using custom location from environment variables: {selected_location['name']} ({selected_location['lat']}, {selected_location['lon']})", file=sys.stdout)
+        except ValueError:
+            print("Error: Invalid numeric values for LOCATION_LATITUDE or LOCATION_LONGITUDE environment variables.", file=sys.stderr)
+            sys.exit(1)
+    else:
+        # Fallback to command-line argument if custom env vars are not fully set
+        if CUSTOM_LOCATION_NAME or CUSTOM_LOCATION_LATITUDE or CUSTOM_LOCATION_LONGITUDE:
+            print("Warning: Partial custom location environment variables set. Please set LOCATION_NAME, LOCATION_LATITUDE, and LOCATION_LONGITUDE together, or none of them.", file=sys.stderr)
+
+        # Get location from first command line argument, default to 'halstead'
+        selected_location_key = sys.argv[1].lower() if len(sys.argv) > 1 else 'halstead'
+        
+        if selected_location_key not in LOCATIONS:
+            print(f"Error: Invalid location specified via command line. Choose from {list(LOCATIONS.keys())}", file=sys.stderr)
+            sys.exit(1)
+        selected_location = LOCATIONS[selected_location_key]
+
 
     # API Key Handling
     owm_api_key = os.getenv('OPENWEATHERMAP_API_KEY', OPENWEATHERMAP_API_KEY_DEFAULT)
@@ -498,6 +527,8 @@ if __name__ == "__main__":
         print(f"ENABLE_ONTHISDAY (env): {os.getenv('ENABLE_ONTHISDAY')}, Script Value: {ENABLE_ONTHISDAY}", file=sys.stdout)
         
         print(f"OPENWEATHERMAP_API_KEY (env): {'***SET***' if os.getenv('OPENWEATHERMAP_API_KEY') else 'NOT SET'}, Script Value set: {bool(owm_api_key) and owm_api_key != OPENWEATHERMAP_API_KEY_DEFAULT}", file=sys.stdout)
+        # Custom location debug print
+        print(f"LOCATION_NAME (env): {CUSTOM_LOCATION_NAME}, LOCATION_LATITUDE (env): {CUSTOM_LOCATION_LATITUDE}, LOCATION_LONGITUDE (env): {CUSTOM_LOCATION_LONGITUDE}", file=sys.stdout)
         print("---------------------------", file=sys.stdout)
 
 
